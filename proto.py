@@ -14,9 +14,16 @@ class ChatMessage:
 	nickname: str
 	msg: str
 
+@dataclass
+class User:
+	color: str
+	nickname: str
+	status: str
+
 class Proto:
 
 	TYPE_CHAT_BROADCAST_MESSAGE = 1
+	TYPE_CHAT_NEW_USER = 2
 
 	@staticmethod
 	def make_packet(pkt_type: int, payload: bytes) -> bytes:
@@ -38,6 +45,16 @@ class Proto:
 		)
 
 		return Proto.make_packet(Proto.TYPE_CHAT_BROADCAST_MESSAGE, payload)
+	
+	@staticmethod
+	def make_chat_new_user(color: str, nickname: str, status: str) -> bytes:
+		payload = (
+			Proto.pack_str(color) +
+			Proto.pack_str(nickname) +
+			Proto.pack_str(status)
+		)
+
+		return Proto.make_packet(Proto.TYPE_CHAT_NEW_USER, payload)
 	
 	@staticmethod
 	def parse_chat_message(data: bytes):
@@ -67,4 +84,31 @@ class Proto:
 			color=color,
 			nickname=nickname,
 			msg=msg
+		)
+	
+	@staticmethod
+	def parse_chat_new_user(data: bytes) -> User:
+		if len(data) < 3:
+			raise ValueError("Data too short to be a valid packet")
+
+		offset = 1 # Skip the type byte
+		
+		color_len = struct.unpack("!H", data[offset:offset+2])[0]
+		offset += 2
+		color = data[offset:offset+color_len].decode('utf-8')
+		offset += color_len
+
+		nickname_len = struct.unpack("!H", data[offset:offset+2])[0]
+		offset += 2
+		nickname = data[offset:offset+nickname_len].decode('utf-8')
+		offset += nickname_len
+
+		status_len = struct.unpack("!H", data[offset:offset+2])[0]
+		offset += 2
+		status = data[offset:offset+status_len].decode('utf-8')
+
+		return User(
+			color=color,
+			nickname=nickname,
+			status=status
 		)

@@ -165,6 +165,7 @@ class Chatter(QMainWindow):
 	def im_alive(self):
 		if not self.typing:
 			#self.sock.sendto(Proto.build_alive_message(self.color, self.nickname, self.status), (self.multicast_group, self.port))
+			self.sock.sendto(Proto.make_chat_new_user(self.color, self.nickname, self.status), (self.multicast_group, self.port))
 			pass
 
 	def check_online(self):
@@ -329,8 +330,22 @@ class Chatter(QMainWindow):
 				}
 
 			self.safe_live_update(chatmessage.uuid, chatmessage.color, chatmessage.nickname, chatmessage.msg)
-		else:
-			print(f"[!] Unknown packet type: {data_type}")
+		
+		if data_type == Proto.TYPE_CHAT_NEW_USER:
+			user = Proto.parse_chat_new_user(data)
+
+			if user.nickname not in self.users:
+				self.users[user.nickname] = {
+					'color': user.color,
+					'nickname': user.nickname,
+					'time': int(time.time()),
+					'editing_block': None,
+					'uuid': None
+				}
+				self.safe_add_user(user.color, user.nickname, user.status)
+			else:
+				self.users[user.nickname]['time'] = int(time.time())
+				self.safe_update_user(user.nickname, user.color, user.status)
 
 if __name__ == "__main__":
 	app = QApplication([])
